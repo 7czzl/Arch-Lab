@@ -1,40 +1,41 @@
 #/* $begin seq-all-hcl */
-# 周泽龙，2016013231，软件61
 ####################################################################
-# iaddl:
-#	fetch:
-#		icode:ifun <- M1[PC]
-#		rA:rB <- M1[PC+1]
-#		valC <- M4[PC+2]
-#		valP <- PC + 6
-#	decode:
-#		valB <- R[rB]
-#	execute:
-#		valE <- valB + valC
-#	memory:
-#	write back:
-#		R[rB] <- valE
-#	PC update:
-#		PC <- valP
-####################################################################
-# leave:
-#	fetch:
-#		icode:ifun <- M1[PC]
-#		valP <- PC + 1
-#	decode:
-#		valA <- R[%esp]
-#		valB <- R[%ebp]
-#	execute:
-#		valE <- valB + 4
-#	memory:
-#		valM <- M4[valB]
-#	write back:
-#		R[%esp] <- valE
-#		R[%ebp] <- valM
-#	PC update:
-#		PC <- valP
+# Qianrui Zhang, Software 52, 2015013226
+# IADDL-Description
+# fetch:
+#    icode:ifun <- M1[PC]
+#    rA:rB <- M1[PC+ 1]
+#    valC <- M4[PC + 2]
+#    valP <- PC + 6  
+# decode:
+#    valB <- R[rb]
+# execute:
+#    valE <- valB + valC
+#    set CC
+# memory:
+# write back:
+#    R[rb] <- valE
+# PC update:
+#    PC <- valP
+
+# LEAVE-Description
+# fetch:
+#    icode:ifun <- M1[PC] 
+#    valP <- PC + 1
+# decode:
+#    valA <- R[%esp]
+#    valB <- R[%ebp]    
+# execute:
+#    valE <- valB + 4
+# memory:
+#    valM <- M4[valB]
+# write back:
+#    R[%esp] <- valE
+#    R[%ebp] <- valM
+# PC update:
+#    PC <- valP
 #
-#
+
 ####################################################################
 #  HCL Description of Control for Single Cycle Y86 Processor SEQ   #
 #  Copyright (C) Randal E. Bryant, David R. O'Hallaron, 2010       #
@@ -167,7 +168,7 @@ int srcA = [
 
 ## What register should be used as the B source?
 int srcB = [
-	icode in { IOPL, IRMMOVL, IMRMOVL, IIADDL  } : rB;
+	icode in { IOPL, IRMMOVL, IMRMOVL, IIADDL } : rB;
 	icode in { IPUSHL, IPOPL, ICALL, IRET } : RESP;
 	icode in { ILEAVE } : REBP;
 	1 : RNONE;  # Don't need register

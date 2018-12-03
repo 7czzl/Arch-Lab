@@ -1,58 +1,54 @@
-# 周泽龙，2016013231，软件61
-	.pos 0
-init:	
-	irmovl Stack, %esp
-	irmovl Stack, %ebp
-	call   Main   
-	halt
+# 软件52班 张迁瑞 2015013226
+		.pos 0
+init:	irmovl Stack, %esp
+		irmovl Stack, %ebp
+		call   Main   
+		halt
 
-# Sample linked list 数据定义
-	.align 4
+		.align 4		# Sample linked list
 ele1:
-	.long 0x00a
-	.long ele2
+		.long 0x00a
+		.long ele2
 ele2:
-	.long 0x0b0
-	.long ele3
+		.long 0x0b0
+		.long ele3
 ele3:
-	.long 0xc00
-	.long 0
+		.long 0xc00
+		.long 0
 
-Main:		
-	pushl	%ebp
-	rrmovl	%esp, %ebp
-	irmovl	ele1, %edx	# edx = ele1
-	pushl	%edx
-	call	sum_list
-	rrmovl	%ebp, %esp
-	popl	%ebp
-	ret
+Main:		pushl	%ebp
+		rrmovl	%esp, %ebp
+		irmovl	ele1, %edx	# edx=ele1
+		pushl	%edx		# set edx as parameter of sum_list
+		call	sum_list
+		rrmovl	%ebp, %esp
+		popl	%ebp
+		ret
 	
-sum_list:	
-	pushl	%ebp
-	rrmovl	%esp, %ebp
-	xorl	%eax, %eax	# 返回值置0
-	mrmovl	8(%ebp), %edx
-	andl	%edx, %edx	# array length == 0 ?
-	je	End
+sum_list:	pushl	%ebp
+		rrmovl	%esp, %ebp
+		xorl	%eax, %eax	# init result value
+		mrmovl	8(%ebp), %edx	# init edx as the start of list
+		andl	%edx, %edx	# test if array length is 0
+		je	End		# if array length is 0, stop calculating
 
-Loop:	
-	mrmovl	(%edx), %esi	# esi = ls->val
-	addl	%esi, %eax	# val += ls->val
-	irmovl	$4, %edi
-	addl	%edi, %edx
-	mrmovl  (%edx), %esi
-	rrmovl  %esi, %edx	# edx = ls->next
-	andl	%edx, %edx	# ls == 0 ?
-	je	End
-	jmp	Loop
+Loop:	mrmovl	(%edx), %esi	# esi = current value
+		addl	%esi, %eax	# add current value to total value
+		irmovl	$4, %edi	# edi=4
+		addl	%edi, %edx	# set edx as next
+		mrmovl  (%edx), %esi	# get next value to esi
+		#	andl	%esi, %esi	# test if next is 0
+		rrmovl  %esi, %edx
+		andl	%edx, %edx
+		je	End
+		jmp	Loop
 		
 End:	
-	rrmovl	%ebp, %esp
-	popl	%ebp
-	ret
+rrmovl	%ebp, %esp
+		popl	%ebp
+		ret
 
 
-# the stack starts address
-	.pos 0x100
+# the stack starts here and grows to lower address
+		.pos 0x100
 Stack: 
