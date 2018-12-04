@@ -2,11 +2,12 @@
 # Test for copying block of size 63;
 #######################################################################
 	.pos 0
-main:	irmovl Stack, %esp  	# Set up stack pointer
-	irmovl Stack, %ebp  	# Set up base pointer
+main:	
+  irmovl Stack, %esp    # Set up stack pointer
+  irmovl Stack, %ebp    # Set up base pointer
 
 	# Set up arguments for copy function and then invoke it
-	irmovl $63, %eax		# src and dst have 63 elements
+	irmovl $63, %eax # concatenate 63 elements from src to dst
 	pushl %eax
 	irmovl dest, %eax	# dst array
 	pushl %eax
@@ -16,56 +17,115 @@ main:	irmovl Stack, %esp  	# Set up stack pointer
 	halt			# should halt with num nonzeros in %eax
 StartFun:
 #/* $begin ncopy-ys */
+
+# HUR SUNGYUN 2014-19768
+
+# I used 5 things for decreasing CPE
+
+# 1. loop unrolling
+# There are too much instructions executed for adding 4 or 1 in original code. Therefore, I decided to unroll the loop and make the percentage of instructions for increasing index values lower. I divided by 3, so I increase index by 12 or 3 each. It makes my program faster by saving cycles that used for increasing index
+
+# 2. taken branch
+# To prevent the waste of mis predicted branch, I set the order of jumps to highly selected order. For example, Jumping more than 3 values first, and then 2 values, and one value lastly. It is more likely to reduce cycle because most of arrays have more than 3 values. This makes my program more faster.
+
+# 3. preventing stall or bubble
+# I reordered some instructions for preventing stall or bubble. For example, I set mrmovl .., %esi apart from rmmovl %esi, ,,,, . This saves one cycle for waiting the mrmovl done first. 
+
+# 4. change into iaddl, isubl
+# it reduce two cycle into one cycle. I stated detail in pipe-full.hcl
+
+# 5. make Move: efficient
+# At first, Move is not that efficient because of "adding first, process later"/ Therefore, I changed it into "process first, adding later". It makes my program a bit faster.
+
+
 ##################################################################
-# ncopy.ys - Copy a src block of len ints to dst.
+# ncopy.ys - Concatenates a src block of len ints to dst.
 # Return the number of positive ints (>0) contained in src.
 #
 # Include your name and ID here.
-#
 # Describe how and why you modified the baseline code.
 #
+# (*) Note: Pseudo-end of array is 0xccaaff.
 ##################################################################
-# Do not modify this portion
-# Function prologue.
-ncopy:	pushl %ebp		# Save old frame pointer
-	rrmovl %esp,%ebp	# Set up new frame pointer
-	pushl %esi		# Save callee-save regs
-	pushl %ebx
-	pushl %edi
-	mrmovl 8(%ebp),%ebx	# src
-	mrmovl 16(%ebp),%edx	# len
-	mrmovl 12(%ebp),%ecx	# dst
+# Do not modify this portion (Function Prolog)
+ncopy:  pushl %ebp    # Save old frame pointer
+  rrmovl %esp,%ebp    # Set up new frame pointer
+  pushl %esi          # Save callee-save regs
+  pushl %ebx
+  pushl %edi
+  mrmovl 8(%ebp),%ebx   # src
+  mrmovl 16(%ebp),%edx  # len
+  mrmovl 12(%ebp),%ecx  # dst
+##################################################################
+# You can modify this portion 
+  andl %edx,%edx 
+  jle Done          
+  irmovl $0xccaaff,%eax
+
+Move:
+  mrmovl (%ecx),%esi
+  iaddl $4,%ecx
+  xorl %eax,%esi
+  jne Move
+
+PreLoop:
+  xorl %eax,%eax
+  isubl $2, %edx
+  jg Loop1
+  iaddl $1, %edx
+  jg Two
+  je One
+
+Loop1:
+  iaddl $12, %ebx
+  iaddl $12, %ecx
+  mrmovl -12(%ebx), %esi
+  mrmovl -8(%ebx), %edi   
+  andl %esi, %esi
+  jle Loop2
+  iaddl $1, %eax
+Loop2: 
+  rmmovl %edi, -8(%ecx)   
+  rmmovl %esi, -12(%ecx)
+  mrmovl -4(%ebx), %esi 
+  andl %edi, %edi       
+  jle Loop3             
+  iaddl $1, %eax
+Loop3:
+  isubl $3, %edx
+  rmmovl %esi, -4(%ecx)
+  andl %esi, %esi
+  jle LoopController
+  iaddl $1, %eax
+LoopController:
+  andl %edx,%edx        
+  jg Loop1   
+  iaddl $1, %edx
+  je One
+  jl Done
+Two:
+  mrmovl 4(%ebx), %esi
+  rmmovl %esi, 4(%ecx)
+  andl %esi, %esi
+  jle One
+  iaddl $1, %eax
+One:
+  mrmovl (%ebx), %edi
+  rmmovl %edi, (%ecx)
+  andl %edi, %edi
+  jle Done
+  iaddl $1, %eax
 
 ##################################################################
-# You can modify this portion
-	# Loop header
-	xorl %eax,%eax		# count = 0;
-	andl %edx,%edx		# len <= 0?
-	jle Done		# if so, goto Done:
-
-Loop:	mrmovl (%ebx), %esi	# read val from src...
-	rmmovl %esi, (%ecx)	# ...and store it to dst
-	andl %esi, %esi		# val <= 0?
-	jle Npos		# if so, goto Npos:
-	irmovl $1, %edi
-	addl %edi, %eax		# count++
-Npos:	irmovl $1, %edi
-	subl %edi, %edx		# len--
-	irmovl $4, %edi
-	addl %edi, %ebx		# src++
-	addl %edi, %ecx		# dst++
-	andl %edx,%edx		# len > 0?
-	jg Loop			# if so, goto Loop:
-##################################################################
-# Do not modify the following section of code
-# Function epilogue.
+  
+# Do not modify the following section of code (Function epiloge)
 Done:
-	popl %edi               # Restore callee-save registers
-	popl %ebx
-	popl %esi
-	rrmovl %ebp, %esp
-	popl %ebp
-	ret
+  popl %edi               # Restore callee-save registers
+  popl %ebx
+  popl %esi
+  rrmovl %ebp, %esp
+  popl %ebp
+  ret
 ##################################################################
 # Keep the following label at the end of your function
 End:
@@ -77,61 +137,61 @@ EndFun:
 ###############################
 	.align 4
 src:
-	.long 1
-	.long 2
+	.long -1
+	.long -2
 	.long 3
 	.long 4
 	.long -5
-	.long -6
-	.long 7
-	.long 8
-	.long -9
-	.long 10
-	.long -11
+	.long 6
+	.long -7
+	.long -8
+	.long 9
+	.long -10
+	.long 11
 	.long 12
-	.long 13
-	.long -14
-	.long -15
+	.long -13
+	.long 14
+	.long 15
 	.long -16
 	.long -17
 	.long -18
 	.long 19
 	.long -20
 	.long 21
-	.long -22
+	.long 22
 	.long 23
 	.long -24
 	.long 25
 	.long 26
-	.long -27
+	.long 27
 	.long 28
 	.long 29
 	.long 30
 	.long 31
-	.long -32
-	.long -33
+	.long 32
+	.long 33
 	.long -34
-	.long -35
+	.long 35
 	.long 36
-	.long 37
-	.long -38
+	.long -37
+	.long 38
 	.long 39
 	.long -40
-	.long 41
-	.long 42
-	.long 43
-	.long -44
+	.long -41
+	.long -42
+	.long -43
+	.long 44
 	.long 45
 	.long 46
-	.long -47
-	.long 48
-	.long -49
-	.long 50
-	.long -51
+	.long 47
+	.long -48
+	.long 49
+	.long -50
+	.long 51
 	.long -52
-	.long 53
-	.long 54
-	.long 55
+	.long -53
+	.long -54
+	.long -55
 	.long -56
 	.long -57
 	.long -58
@@ -146,74 +206,144 @@ src:
 Predest:
 	.long 0xbcdefa
 dest:
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
-	.long 0xcdefab
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xccaaff
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
+	.long 0xffaacc
 Postdest:
 	.long 0xdefabc
 
 .align 4
 # Run time stack
+	.long 0
+	.long 0
+	.long 0
+	.long 0
+	.long 0
+	.long 0
 	.long 0
 	.long 0
 	.long 0

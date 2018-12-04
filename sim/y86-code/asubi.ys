@@ -18,21 +18,21 @@ Main:	irmovl $4,%eax
 	pushl %eax	# Push 4
 	irmovl array,%edx
 	pushl %edx      # Push array
-	call Sub	# Sub(array, 4)
+	call Sum	# Sum(array, 4)
 	halt
 
 	# int Sum(int *Start, int Count)
-Sub:	pushl %ebp
+Sum:	pushl %ebp
 	rrmovl %esp,%ebp
 	mrmovl 8(%ebp),%ecx 	# ecx = Start
 	mrmovl 12(%ebp),%edx	# edx = Count
-	irmovl $0xabcd, %eax		# sub = 0xabcd
+	irmovl $0xabcd, %eax	# init = abcd
 	andl   %edx,%edx
 	je     End
 Loop:	mrmovl (%ecx),%esi   # get *Start
-	subl %esi,%eax       # sub to sub
-	iaddl  $4,%ecx       # Sub++
-  isubl  $1,%edx      # Count--
+	subl %esi,%eax       # sub from init
+	isubl  $-4,%ecx      # next element 
+        isubl  $1,%edx       # Count--
 	jne    Loop          # Stop when 0
 End:	popl %ebp
 	ret

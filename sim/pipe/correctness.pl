@@ -10,7 +10,7 @@ use Getopt::Std;
 # Configuration
 #
 $blocklen = 64;
-$over = 3;
+$over = 2;
 $yas = "../misc/yas";
 $yis = "../misc/yis";
 $pipe = "./psim";
@@ -18,7 +18,7 @@ $gendriver = "./gen-driver.pl";
 $fname = "cdriver";
 $verbose = 1;
 # Maximum allowable code length
-$bytelim = 1000;
+$bytelim = 1038;
 
 #
 # usage - Print the help message and terminate
@@ -80,55 +80,58 @@ if ($verbose) {
 
 $goodcnt = 0;
 
-for ($i = 0; $i <= $blocklen+$over; $i++) {
+  for ($i = 0; $i <= $blocklen+$over; $i++) {
     $len = $i;
-    if ($i > $blocklen) {
-	# Try some larger values
-	$len = $blocklen * ($i - $blocklen + 1);
+    if ($i > $blocklen) 
+    {
+      # Try some larger values
+      $len = $blocklen * ($i - $blocklen + 1);
     }
-    !(system "$gendriver -rc -n $len -f $ncopy.ys -b $bytelim > $fname$len.ys") ||
-	die "Couldn't generate driver file $fname$len.ys\n";
-    !(system "$yas $fname$len.ys") ||
-	die "Couldn't assemble file $fname$len.ys\n";
-    if ($usepipe) {
-	!(system "$pipe -v 1 $fname$len.yo > $fname$len.pipe") ||
-	    die "Couldn't simulate file $fname$len.yo with pipeline simulator\n";
-	$stat = `grep "eax:" $fname$len.pipe`;
-	!(system "rm $fname$len.ys $fname$len.yo $fname$len.pipe") ||
-	    die "Couldn't remove files $fname$len.ys and/or $fname$len.yo and/or $fname$len.pipe\n";
-	chomp $stat;
-    } else {
-	!(system "$yis $fname$len.yo > $fname$len.yis") ||
-	    die "Couldn't simulate file $fname$len.yo with instruction set simulator\n";
-	$stat = `grep eax $fname$len.yis`;
-	!(system "rm $fname$len.ys $fname$len.yo $fname$len.yis") ||
-	    die "Couldn't remove files $fname$len.ys and/or $fname$len.yo and/or $fname$len.yis\n";
-	chomp $stat;
+    !(system "$gendriver -rc -n $len -f $ncopy.ys -b $bytelim > $fname$len.ys") || die "Couldn't generate driver file $fname$len.ys\n"; 
+    !(system "$yas $fname$len.ys") || die "Couldn't assemble file $fname$len.ys\n";
+    
+    if ($usepipe) 
+    {
+      !(system "$pipe -v 1 $fname$len.yo > $fname$len.pipe") || die "Couldn't simulate file $fname$len.yo with pipeline simulator\n";
+      $stat = `grep "eax:" $fname$len.pipe`;
+      !(system "rm $fname$len.ys $fname$len.yo $fname$len.pipe") || die "Couldn't remove files $fname$len.ys and/or $fname$len.yo and/or $fname$len.pipe\n";
+      chomp $stat;
+    } 
+    else 
+    {
+      !(system "$yis $fname$len.yo > $fname$len.yis") || die "Couldn't simulate file $fname$len.yo with instruction set simulator\n";
+      
+      $stat = `grep eax $fname$len.yis`;
+      !(system "rm $fname$len.ys $fname$len.yo $fname$len.yis") || die "Couldn't remove files $fname$len.ys and/or $fname$len.yo and/or $fname$len.yis\n";
+      chomp $stat;
     }
+    
     $result = "failed";
+    
     if ($stat =~ "zzzz") {
-	$result = "Couldn't run checking code";
+      $result = "Couldn't run checking code";
     }
     if ($stat =~ "aaaa") {
-	$result = "OK";
-	$goodcnt ++;
+      $result = "OK";
+      $goodcnt ++;
     }
     if ($stat =~ "bbbb") {
-	$result = "Bad count";
+      $result = "Bad count";
     }
-    if ($stat =~ "cccc") {
-	$result = "Program too long";
-	printf "%d\t%s\n", $len, $result;
-	exit(0);
+    if ($stat =~ "cccc") { 
+      $result = "Program too long";
+      printf "%d\t%s\n", $len, $result;
+      exit(0);
     }
     if ($stat =~ "dddd") {
-	$result = "Incorrect copying";
+      $result = "Incorrect copying";
     }
     if ($stat =~ "eeee") {
-	$result = "Corruption before or after destination";
+      $result = "Corruption before or after destination";
     }
     if ($verbose) {
-	printf "%d\t%s\n", $len, $result;
+      #printf "%d\t%s\t(%s)\n", $len, $result,$stat;
+      printf "%d\t%s\n" , $len, $result;
     }
 }
 

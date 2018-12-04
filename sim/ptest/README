@@ -11,7 +11,7 @@ basic test types, implemented as four different scripts:
 Each of the tests has the following optional arguments:
 	-s simfile	Use simfile as simulator (default ../pipe/psim).
 	-i		Test the iaddl instruction
-	-l		Test the leave instruction
+	-l              Test the isubl instruction
 
 You can use make to run all four test programs.  Options to make include:
 
@@ -20,7 +20,7 @@ You can use make to run all four test programs.  Options to make include:
 
 For example, you could say:
 	make SIM=../pipe/psim TFLAGS=-il
-to test the pipeline simulator including both the iaddl and leave instructions.
+to test the pipeline simulator including both the iaddl and isubl instructions.
 
 When the test program detects an erroneous simulation, it leaves the
 .ys file in the directory (ordinarily it deletes the test code it

@@ -10,6 +10,7 @@ use Getopt::Std;
 #
 # Configuration
 #
+$totalruns = 10;
 $blocklen = 64;
 $yas = "../misc/yas";
 $pipe = "./psim";
@@ -20,10 +21,9 @@ $verbose = 1;
 ## Grading criteria
 $totalpoints = 60;
 # What CPE is required to get full credit?
-$fullcpe = 10.0;
+$fullcpe = 12.9;
 # What CPE is required to get nonzero credit:
-$threshcpe = 12.5;
-
+$threshcpe = 16;
 
 
 #
@@ -70,35 +70,46 @@ if ($verbose) {
 }
 
 $tcpe = 0;
-for ($i = 0; $i <= $blocklen; $i++) {
-    !(system "$gendriver -n $i -f $ncopy.ys > $fname$i.ys") ||
-	die "Couldn't generate driver file $fname$i.ys\n";
-    !(system "$yas $fname$i.ys") ||
-	die "Couldn't assemble file $fname$i.ys\n";
-    $stat = `$pipe -v 0 $fname$i.yo` ||
-	die "Couldn't simulate file $fname$i.yo\n";
+
+for($j = 0; $j < $totalruns; $j++)
+{
+  $tcpe = 0;
+
+  for ($i = 0; $i <= $blocklen; $i++) {
+      !(system "$gendriver -n $i -f $ncopy.ys > $fname$i.ys") ||
+    die "Couldn't generate driver file $fname$i.ys\n";
+      !(system "$yas $fname$i.ys") ||
+    die "Couldn't assemble file $fname$i.ys\n";
+      $stat = `$pipe -v 0 $fname$i.yo` ||
+    die "Couldn't simulate file $fname$i.yo\n";
 #    print $stat;
-    !(system "rm $fname$i.ys $fname$i.yo") ||
-	die "Couldn't remove files $fname$i.ys and/or $fname$i.yo\n";
-    chomp $stat;
-    $stat =~ s/[ ]*CPI:[ ]*//;
-    $stat =~ s/ cycles.*//;
-    if ($i > 0) {
-      $cpe = $stat/$i;
-      if ($verbose) {
-	printf "%d\t%d\t%.2f\n", $i, $stat, $cpe;
-      }
-      $tcpe += $cpe;
-    } else {
-      if ($verbose) {
-	printf "%d\t%d\n", $i, $stat;
+      !(system "rm $fname$i.ys $fname$i.yo") ||
+    die "Couldn't remove files $fname$i.ys and/or $fname$i.yo\n";
+      chomp $stat;
+      $stat =~ s/[ ]*CPI:[ ]*//;
+      $stat =~ s/ cycles.*//;
+      if ($i > 0) 
+      {
+        $cpe = $stat/$i;
+        if ($verbose && $j < 1){
+          printf "%d\t%d\t%.2f\n", $i, $stat, $cpe;
+        }
+        $tcpe += $cpe;
+      } else {
+        if ($verbose && $j < 1) {
+          printf "%d\t%d\n", $i, $stat;
+        }
       }
     }
-      
-}
+    $total += $tcpe/$blocklen;
+    print "\t <-- progress:\r", $j * 10;
+  }
 
-$acpe = $tcpe/$blocklen;
-printf "Average CPE\t%.2f\n", $acpe;
+
+
+$acpe = $total/$totalruns;
+print "\n==================";
+printf "\nAverage CPE\t%.2f\n", $acpe;
 
 ## Compute Score
 $score = 0;

@@ -1,63 +1,59 @@
-# 周泽龙，2016013231，软件61
-	.pos 0
-init:	
-	irmovl  Stack, %esp
-	irmovl  Stack, %ebp
-	call    Main
-	halt
+# HUR SUNGYUN 2014-19768
+irmovl Stack, %esp
+irmovl Stack, %ebp
+pushl %ebp
+irmovl $3, %edx
+pushl %edx
+irmovl dest, %edx
+pushl %edx
+irmovl src, %edx
+pushl %edx
+call copy_block
+halt
 
-# Sample linked list 数据定义
-	.align 4
+.align 4
+# Source block
 src:
-	.long 0x00a
-	.long 0x0b0 
-	.long 0xc00
+.long 0x00a
+.long 0x0b0
+.long 0xc00
+# Destination block
 dest:
-	.long 0x111
-	.long 0x222 
-	.long 0x333
+.long 0x111
+.long 0x222
+.long 0x333
 
-Main:	
-	pushl	%ebp
-	rrmovl	%esp, %ebp
-	irmovl  src, %edx
-	pushl	%edx
-	irmovl	dest, %edx
-	pushl	%edx
-	irmovl  $3, %edx
-	pushl	%edx
-	call	copy_block
-	rrmovl	%ebp, %esp
-	popl	%ebp
-	ret
+copy_block:
+pushl %ebp
+rrmovl %esp, %ebp
+pushl %edi
+irmovl $4, %edi
+pushl %esi
+pushl %ebx
+mrmovl 8(%ebp), %ebx
+mrmovl 12(%ebp), %edx
+mrmovl 16(%ebp), %ecx
+xorl %eax, %eax
+andl %ecx, %ecx
+jle ending
 
-copy_block:	
-	pushl	%ebp
-	rrmovl	%esp, %ebp
-	xorl	%eax, %eax	# 返回值置0
-	mrmovl	8(%ebp), %ecx	# ecx = len
-	mrmovl	12(%ebp), %edx  # edx = dest
-	mrmovl  16(%ebp), %ebx  # ebx = src
-	andl	%ecx, %ecx	# array length == 0 ?
-	je	End
+loop:
+mrmovl (%ebx), %esi
+addl %edi, %ebx
+rmmovl %esi, (%edx)
+addl %edi, %edx
+xorl %esi, %eax
+irmovl $1, %esi
+subl %esi, %ecx
+jg loop
 
-Loop:	
-	mrmovl  (%ebx), %esi
-	rmmovl	%esi, (%edx)	# copy src to dest
-	xorl	%esi, %eax	# value ^= val
-	irmovl	$4, %edi
-	addl	%edi, %ebx	# src++	
-	addl	%edi, %edx	# dest++
-	irmovl  $1, %esi
-	subl	%esi, %ecx	# len--
-	andl	%ecx, %ecx	# len == 0 ?
-	jne	Loop						
-	
-End:	
-	rrmovl  %ebp, %esp
-	popl	%ebp
-	ret
+ending:
+popl %ebx
+popl %esi
+popl %edi
+rrmovl %ebp, %esp
+popl %ebp
+ret
 
-# the stack starts address
-	.pos 0x100
-Stack:         
+.pos 0x300
+Stack:

@@ -122,6 +122,43 @@ STUFF
     }
 }
 
+if ($testisubl) {
+    # Create set of forward tests using isubl
+    foreach $t (@instr) {
+	foreach $va (@vals) {
+	    foreach $vb (@vals) {
+		$tname = "ji-$t-$va-$vb";
+		open (YFILE, ">$tname.ys") || die "Can't write to $tname.ys\n";
+	      print YFILE <<STUFF;
+	      irmovl stack, %esp
+	      irmovl \$-1, %esi
+	      irmovl \$-2, %edi
+	      irmovl \$-4, %ebp
+	      irmovl \$$va, %eax
+	      isubl \$$vb,%eax
+	      $t target
+	      subl %esi,%eax
+	      subl %edi,%eax
+	      subl %ebp,%eax
+              halt
+target:
+	      subl %esi,%edx
+	      subl %edi,%edx
+	      subl %ebp,%edx
+              nop
+              nop
+	      halt
+.pos 0x100
+stack:
+STUFF
+                close YFILE;
+		&run_test($tname);
+	    }
+	}
+    }
+}
+
+
 &test_stat();
 
 

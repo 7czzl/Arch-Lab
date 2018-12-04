@@ -47,6 +47,14 @@ if ($testiaddl) {
 	     "3:iaddl \$0x4,%esp",);
 }
 
+if ($testisubl) {
+    @dest = (@dest,
+	     "1:isubl \$0xFDFF,%eax",
+	     "2:isubl \$0xFFFC,%ebp",
+	     "3:isubl \$0xFFFC,%esp",);
+}
+
+
 if ($testleave) {
     @dest = (@dest,  "2:leave", "3:leave");
 }
@@ -89,6 +97,14 @@ if ($testiaddl) {
 	    "2:iaddl \$0x8,%ebp",
 	    "3:iaddl \$0x8,%esp");
 }
+
+if ($testisubl) {
+    @src = (@src,
+	    "1:iaddl \$0xFCFF,%eax",
+	    "2:iaddl \$0xFFF8,%ebp",
+	    "3:iaddl \$0xFFF8,%esp");
+}
+
 
 if ($testleave) {
     @src = (@src,  "2:leave", "3:leave");

@@ -34,9 +34,11 @@ if ($opt_b) {
 if ($opt_n) {
     $n = $opt_n;
     if ($n < 0) {
-	print STDERR "n must be at least 0\n";
-	die "\n";
+      print STDERR "n must be at least 0\n";
+      die "\n";
     }
+}else{
+  $n = 4;
 }
 
 $randomval = 0;
@@ -53,6 +55,25 @@ if ($opt_r) {
 
 # The data to be stored.
 @data = ();
+@dst_data = ();
+
+$PseudoEnd = "0xccaaff";
+$randint = int(rand($n));
+#$randint = 0             # BEST CASE!
+#$randint = $n;           # WORST CASE!
+$newn = ($n*2+1)-($n+$randint+1);
+
+$Fill = "0xffaacc";
+# Values to put at beginning and end of destination
+$Preval =  "0xbcdefa";
+$Postval = "0xdefabc";
+
+
+for ($i = 0; $i < ($n * 2) + 1; $i++){
+  $dst_data[$i] = $Fill;
+}
+
+$dst_data[$randint] = $PseudoEnd;
 
 for ($i = 0; $i < $n; $i++) {
   $data[$i] = -($i+1);
@@ -63,29 +84,24 @@ for ($i = 0; $i < $n; $i++) {
     }
   } else {
     if ($rval < $tval && int(rand(2)) % 2 == 1 ||
-	$tval - $rval >= $n - $i) {
+      $tval - $rval >= $n - $i) {
       $data[$i] = -$data[$i];
       $rval++;
     }
   }
 }
 
-
-# Values to put at beginning and end of destination
-$Preval =  "0xbcdefa";
-$Postval = "0xdefabc";
-
-
 print <<PROLOGUE;
 #######################################################################
 # Test for copying block of size $n;
 #######################################################################
 	.pos 0
-main:	irmovl Stack, %esp  	# Set up stack pointer
-	irmovl Stack, %ebp  	# Set up base pointer
+main:	
+  irmovl Stack, %esp    # Set up stack pointer
+  irmovl Stack, %ebp    # Set up base pointer
 
 	# Set up arguments for copy function and then invoke it
-	irmovl \$$n, %eax		# src and dst have $n elements
+	irmovl \$$n, %eax # concatenate $n elements from src to dst
 	pushl %eax
 	irmovl dest, %eax	# dst array
 	pushl %eax
@@ -161,7 +177,27 @@ checkm:
 	irmovl src,%ebx   # Pointer to next source location
 	irmovl \$$n,%edi  # Count
 	andl %edi,%edi
-	je checkpre         # Skip check if count = 0
+  je checkpre         # Skip check if count = 0
+
+###############################################################################
+  irmovl \$4, %eax
+  subl %eax,%edx
+
+movdst:
+  irmovl \$4,%eax               # dst++
+  addl %eax,%edx
+  irmovl \$$PseudoEnd,%eax      # if(dst == pseudoend) break
+  mrmovl (%edx), %esi             # load dst
+  xorl %eax,%esi                  # compare (dst) with pseudoend
+  jne movdst
+
+  irmovl \$4,%eax               # Keep pseudo-end of file
+  addl %eax,%edx 
+
+  xorl %eax, %eax
+###############################################################################
+# Check if correctly copied values
+#
 mcloop:
 	mrmovl (%edx),%eax
 	mrmovl (%ebx),%esi
@@ -171,14 +207,37 @@ mcloop:
 	jmp cdone
 mok:
 	irmovl \$4,%eax
-	addl %eax,%edx	  # dest ++
+	addl %eax,%edx	  # dst++
 	addl %eax,%ebx    # src++
 	irmovl \$1,%eax
 	subl %eax,%edi    # cnt--
 	jg mcloop
+
+#  # Set up counter
+   irmovl \$$newn,%edi
+   andl %edi,%edi
+   je checkpre:
+
+
+checkleft:
+  irmovl \$$Fill,%eax
+  mrmovl (%edx),%ebx  # *dst
+  xorl %ebx, %eax
+  jne ups
+  irmovl \$4,%eax     # dst++
+  addl %eax,%edx        
+  irmovl \$1,%eax
+  subl %eax,%edi      # cnt--
+  jg checkleft
+  jmp checkpre
+ 
+ ups:
+  irmovl \$0xeeee,%eax
+  jmp cdone
+
 checkpre:
 	# Check for corruption
-	irmovl Predest,%edx
+  irmovl Predest,%edx
 	mrmovl (%edx), %eax  # Get word before destination
 	irmovl \$$Preval, %edx
 	subl %edx,%eax
@@ -187,7 +246,7 @@ checkpre:
 	jmp cdone
 checkpost:
 	# Check for corruption
-	irmovl Postdest,%edx
+  irmovl Postdest,%edx
 	mrmovl (%edx), %eax  # Get word after destination
 	irmovl \$$Postval, %edx
 	subl %edx,%eax
@@ -229,8 +288,9 @@ Predest:
 dest:
 EPILOGUE2
 
-for ($i = 0; $i < $n; $i++) {
-    print "\t.long 0xcdefab\n";
+for ($i = 0; $i < ($n*2)+1; $i++) {
+  #print "\t.long 0xcdefab\n";
+  print "\t.long $dst_data[$i]\n";
 }
 
 print <<EPILOGUE3;
@@ -239,6 +299,12 @@ Postdest:
 
 .align 4
 # Run time stack
+	.long 0
+	.long 0
+	.long 0
+	.long 0
+	.long 0
+	.long 0
 	.long 0
 	.long 0
 	.long 0

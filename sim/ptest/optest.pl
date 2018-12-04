@@ -56,6 +56,28 @@ STUFF
     }
 }
 
+if ($testisubl) {
+    foreach $ra (@regs) {
+	foreach $val (@vals) {
+	    $tname = "op-isubl-$val-$ra";
+	    open (YFILE, ">$tname.ys") || die "Can't write to $tname.ys\n";
+	    print YFILE <<STUFF;
+	    irmovl \$$val, %$ra
+	    nop
+	    nop
+	    nop
+            isubl \$32, %$ra
+	    nop
+	    nop
+	    halt
+STUFF
+            close YFILE;
+	    run_test($tname);
+	}
+    }
+}
+
+
 @instr = ("pushl", "popl");
 @regs = ("edx", "esp");
 
