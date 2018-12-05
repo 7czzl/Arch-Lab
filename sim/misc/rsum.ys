@@ -1,0 +1,60 @@
+# 周泽龙，2016013231，软件61
+	.pos 0
+init:	
+	irmovl Stack, %esp
+	irmovl Stack, %ebp
+	call   Main   
+	halt
+
+# Sample linked list 数据定义
+	.align 4
+ele1:
+	.long 0x00a
+	.long ele2
+ele2:
+	.long 0x0b0
+	.long ele3
+ele3:
+	.long 0xc00
+	.long 0
+
+Main:
+	pushl	%ebp
+	rrmovl	%esp, %ebp
+	irmovl	ele1, %edx	# edx = ele1
+	pushl	%edx
+	call	rsum_list
+	popl	%edx
+	rrmovl	%ebp, %esp
+	popl	%ebp
+	ret
+
+rsum_list:
+	pushl	%ebp
+	rrmovl	%esp, %ebp
+	xorl	%eax, %eax	# 返回值置0
+	mrmovl	8(%ebp), %edx
+	andl	%edx, %edx	# array length == 0 ?
+	je	End
+
+	mrmovl  (%edx), %esi	# esi = ls->val
+	pushl	%esi
+	irmovl  $4, %edi
+	addl	%edi, %edx
+	mrmovl  (%edx), %esi
+	rrmovl  %esi, %edx	# edx = ls->next
+	pushl	%edx
+	call 	rsum_list
+	popl	%edx		 
+	popl	%esi
+	addl	%esi, %eax	# val += ls->val
+
+End:
+	rrmovl	%ebp, %esp
+	popl	%ebp
+	ret
+
+
+# the stack starts address
+	.pos 0x100
+Stack: 
